@@ -7,6 +7,7 @@ open Avalonia.FuncUI
 open Avalonia.FuncUI.Elmish
 open Avalonia.FuncUI.Components.Hosts
 open System.Net.NetworkInformation
+open Avalonia.Threading
 
 type MainWindow() as this =
     inherit HostWindow()
@@ -20,12 +21,21 @@ type MainWindow() as this =
         
         let networkStatus (initial: Counter.State) =
             let sub dispatch =
-                NetworkChange.NetworkAvailabilityChanged.Subscribe(fun args -> dispatch (Counter.Msg.NetworkChanged args.IsAvailable)) |> ignore
+                NetworkChange
+                    .NetworkAvailabilityChanged
+                    .Subscribe(fun args -> dispatch (Counter.Msg.NetworkChanged args.IsAvailable)) 
+                    |> ignore
             Cmd.ofSub sub
 
+        let syncDispatch (dispatch: Dispatch<'msg>) : Dispatch<'msg> =
+            match Dispatcher.UIThread.CheckAccess() with
+            | true -> fun msg -> Dispatcher.UIThread.Post (fun () -> dispatch msg)
+            | false -> fun msg -> dispatch msg
+
         Elmish.Program.mkSimple (fun () -> Counter.init) Counter.update Counter.view
-        |> Program.withSubscription networkStatus
         |> Program.withHost this
+        |> Program.withSyncDispatch syncDispatch
+        |> Program.withSubscription networkStatus
         |> Program.withConsoleTrace
         |> Program.run
         
