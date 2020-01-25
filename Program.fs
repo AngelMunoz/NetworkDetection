@@ -1,0 +1,53 @@
+﻿namespace NetworkDetection
+
+open Elmish
+open Avalonia
+open Avalonia.Controls.ApplicationLifetimes
+open Avalonia.FuncUI
+open Avalonia.FuncUI.Elmish
+open Avalonia.FuncUI.Components.Hosts
+open System.Net.NetworkInformation
+
+type MainWindow() as this =
+    inherit HostWindow()
+    do
+        base.Title <- "NetworkDetection"
+        base.Width <- 400.0
+        base.Height <- 400.0
+        
+        //this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
+        //this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
+        
+        let networkStatus (initial: Counter.State) =
+            let sub dispatch =
+                NetworkChange.NetworkAvailabilityChanged.Subscribe(fun args -> dispatch (Counter.Msg.NetworkChanged args.IsAvailable)) |> ignore
+            Cmd.ofSub sub
+
+        Elmish.Program.mkSimple (fun () -> Counter.init) Counter.update Counter.view
+        |> Program.withSubscription networkStatus
+        |> Program.withHost this
+        |> Program.withConsoleTrace
+        |> Program.run
+        
+type App() =
+    inherit Application()
+
+    override this.Initialize() =
+        this.Styles.Load "avares://Avalonia.Themes.Default/DefaultTheme.xaml"
+        this.Styles.Load "avares://Avalonia.Themes.Default/Accents/BaseDark.xaml"
+
+    override this.OnFrameworkInitializationCompleted() =
+        match this.ApplicationLifetime with
+        | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
+            desktopLifetime.MainWindow <- MainWindow()
+        | _ -> ()
+
+module Program =
+
+    [<EntryPoint>]
+    let main(args: string[]) =
+        AppBuilder
+            .Configure<App>()
+            .UsePlatformDetect()
+            .UseSkia()
+            .StartWithClassicDesktopLifetime(args)
