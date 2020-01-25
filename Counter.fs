@@ -35,7 +35,7 @@ module Counter =
         | Increment -> { state with count = state.count + 1 }
         | Decrement -> { state with count = state.count - 1 }
         | Reset -> init state.notificationManager
-        | NetworkChanged isUp -> 
+        | NetworkChanged isUp ->
             let message = sprintf "Network status is %s" (if isUp then "Up" else "Down")
             let time = Nullable(TimeSpan.FromSeconds 3.5)
             let notification = Notification("Network Changed", message, NotificationType.Information, time)
@@ -61,7 +61,7 @@ module Counter =
                       [ TextBlock.dock Dock.Top
                         TextBlock.fontSize 32.0
                         TextBlock.verticalAlignment VerticalAlignment.Center
-                        TextBlock.horizontalAlignment HorizontalAlignment.Center
+                        TextBlock.horizontalAlignment HorizontalAlignment.Left
                         TextBlock.text (sprintf "Network is %s" (if state.isNetworkUp then "Up" else "Down")) ]
                   TextBlock.create
                       [ TextBlock.dock Dock.Top
