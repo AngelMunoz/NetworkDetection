@@ -8,37 +8,38 @@ open Avalonia.FuncUI.Elmish
 open Avalonia.FuncUI.Components.Hosts
 open System.Net.NetworkInformation
 open Avalonia.Threading
+open Avalonia.Controls.Notifications
 
 type MainWindow() as this =
     inherit HostWindow()
     do
         base.Title <- "NetworkDetection"
-        base.Width <- 400.0
-        base.Height <- 400.0
-        
+        base.Width <- 800.0
+        base.Height <- 600.0
+
         //this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
         //this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
-        
+
         let networkStatus (initial: Counter.State) =
             let sub dispatch =
-                NetworkChange
-                    .NetworkAvailabilityChanged
-                    .Subscribe(fun args -> dispatch (Counter.Msg.NetworkChanged args.IsAvailable)) 
-                    |> ignore
+                NetworkChange.NetworkAvailabilityChanged.Subscribe
+                    (fun args -> dispatch (Counter.Msg.NetworkChanged args.IsAvailable)) |> ignore
             Cmd.ofSub sub
 
-        let syncDispatch (dispatch: Dispatch<'msg>) : Dispatch<'msg> =
+        let syncDispatch (dispatch: Dispatch<'msg>): Dispatch<'msg> =
             match Dispatcher.UIThread.CheckAccess() with
-            | true -> fun msg -> Dispatcher.UIThread.Post (fun () -> dispatch msg)
+            | true -> fun msg -> Dispatcher.UIThread.Post(fun () -> dispatch msg)
             | false -> fun msg -> dispatch msg
 
-        Elmish.Program.mkSimple (fun () -> Counter.init) Counter.update Counter.view
+        let notificationManager = WindowNotificationManager(this)
+
+        Elmish.Program.mkSimple (fun () -> (Counter.init notificationManager)) Counter.update Counter.view
         |> Program.withHost this
         |> Program.withSyncDispatch syncDispatch
         |> Program.withSubscription networkStatus
         |> Program.withConsoleTrace
         |> Program.run
-        
+
 type App() =
     inherit Application()
 
@@ -48,16 +49,11 @@ type App() =
 
     override this.OnFrameworkInitializationCompleted() =
         match this.ApplicationLifetime with
-        | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
-            desktopLifetime.MainWindow <- MainWindow()
+        | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime -> desktopLifetime.MainWindow <- MainWindow()
         | _ -> ()
 
 module Program =
 
     [<EntryPoint>]
-    let main(args: string[]) =
-        AppBuilder
-            .Configure<App>()
-            .UsePlatformDetect()
-            .UseSkia()
-            .StartWithClassicDesktopLifetime(args)
+    let main (args: string []) =
+        AppBuilder.Configure<App>().UsePlatformDetect().UseSkia().StartWithClassicDesktopLifetime(args)
